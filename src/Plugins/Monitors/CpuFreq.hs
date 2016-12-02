@@ -32,10 +32,14 @@ cpuFreqConfig =
 runCpuFreq :: [String] -> Monitor String
 runCpuFreq _ = do
   suffix <- getConfigValue useSuffix
+  decimals <- getConfigValue decDigits
   let path = ["/sys/devices/system/cpu/cpu", "/cpufreq/scaling_cur_freq"]
       divisor = 1e6 :: Double
-      fmt x | x < 1 = show (round (x * 1000) :: Integer) ++
-                      if suffix then "MHz" else ""
-            | otherwise = show x ++ if suffix then "GHz" else ""
+      trunc :: (Integral n) => n -> Double -> Double
+      trunc n = (/10.0^^n) . fromInteger . round . (*10^n) 
+      fmt = if suffix then old_format else show . trunc decimals 
+      old_format x 
+            | x < 1 = show (round (x * 1000) :: Integer) ++ "MHz"
+            | otherwise = show x ++ "GHz" 
   failureMessage <- getConfigValue naString
   checkedDataRetrieval failureMessage [path] Nothing (/divisor) fmt
